@@ -1,0 +1,15 @@
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/queue.c
+smart home\queue.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdlib.h
+smart home\queue.o: E:\Keil5\ARM\ARMCC\Bin\..\include\string.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+smart home\queue.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stddef.h
+smart home\queue.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+smart home\queue.o: ../Core/Inc/FreeRTOSConfig.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3/portmacro.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
+smart home\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h
