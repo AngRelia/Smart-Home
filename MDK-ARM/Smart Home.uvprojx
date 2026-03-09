@@ -788,6 +788,16 @@
               <FileType>5</FileType>
               <FilePath>.\icode\led.h</FilePath>
             </File>
+            <File>
+              <FileName>dht11.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\icode\dht11.c</FilePath>
+            </File>
+            <File>
+              <FileName>dht11.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\icode\dht11.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

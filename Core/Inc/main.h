@@ -67,6 +67,10 @@ void Error_Handler(void);
 #define KEY_4_GPIO_Port GPIOA
 #define Encoder_button_Pin GPIO_PIN_12
 #define Encoder_button_GPIO_Port GPIOB
+#define DHT11_Pin GPIO_PIN_13
+#define DHT11_GPIO_Port GPIOB
+#define BEEP_Pin GPIO_PIN_14
+#define BEEP_GPIO_Port GPIOB
 #define OLED_SCL_Pin GPIO_PIN_8
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_9

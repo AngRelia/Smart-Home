@@ -48,4 +48,5 @@ smart home\freertos.o: ./icode/my_encoder.h
 smart home\freertos.o: ../Core/Inc/tim.h
 smart home\freertos.o: ../Core/Inc/rtc.h
 smart home\freertos.o: ./icode/led.h
+smart home\freertos.o: ./icode/dht11.h
 smart home\freertos.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdio.h

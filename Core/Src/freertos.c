@@ -22,6 +22,7 @@
 #include "tim.h"
 #include "rtc.h"
 #include "led.h"
+#include "dht11.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -29,8 +30,12 @@
 /* USER CODE BEGIN PTD */
 typedef enum
 {
-  UI_PAGE_MENU = 0,
+  UI_PAGE_SCREENSAVER = 0,
+  UI_PAGE_MENU,
+  UI_PAGE_ENV,
+  UI_PAGE_SWITCH,
   UI_PAGE_LIGHT_MENU,
+  UI_PAGE_SYSTEM_MENU,
   UI_PAGE_LED_CTRL,
   UI_PAGE_RGB_CTRL,
   UI_PAGE_TIME
@@ -62,6 +67,7 @@ QueueHandle_t xKeyQueue;
 TaskHandle_t KeyTaskHandle;
 TaskHandle_t OLEDTaskHandle;
 TaskHandle_t LEDTaskHandle;
+TaskHandle_t ENVTaskHandle;
 
 volatile int8_t  g_MenuIndex = 0;      /* 0~3 */
 volatile uint8_t g_MenuEnterFlag = 0;  /* ???????? */
@@ -69,6 +75,13 @@ volatile int16_t g_LastEncStep = 0;    /* ?????????? */
 
 volatile uint8_t g_LedModeAuto = 0;    /* 0=Manual, 1=Auto */
 volatile uint8_t g_LedBrightness[3] = {30, 30, 30};
+
+volatile uint8_t g_EnvTemp = 0;
+volatile uint8_t g_EnvHumi = 0;
+volatile uint8_t g_EnvTempDec = 0;
+volatile uint8_t g_EnvHumiDec = 0;
+volatile uint8_t g_EnvValid = 0;
+volatile uint8_t g_EnvLastStatus = 0;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -83,6 +96,7 @@ const osThreadAttr_t defaultTask_attributes = {
 void Key_Task_Entry(void *argument);
 void OLED_Task_Entry(void *argument);
 void LED_Control_Task_Entry(void *argument);
+void ENV_Task_Entry(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -127,6 +141,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   xTaskCreate(Key_Task_Entry, "KeyTask", 256, NULL, osPriorityAboveNormal, &KeyTaskHandle);
   xTaskCreate(LED_Control_Task_Entry, "LEDTask", 256, NULL, osPriorityLow, &LEDTaskHandle);
+  xTaskCreate(ENV_Task_Entry, "ENVTask", 256, NULL, osPriorityLow, &ENVTaskHandle);
   xTaskCreate(OLED_Task_Entry, "OLEDTask", 512, NULL, osPriorityLow, &OLEDTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
@@ -218,15 +233,47 @@ void LED_Control_Task_Entry(void *argument)
   }
 }
 
+void ENV_Task_Entry(void *argument)
+{
+  DHT11_Data_t dht;
+  HAL_StatusTypeDef st;
+
+  DHT11_Init();
+  osDelay(1200);
+
+  for (;;)
+  {
+    st = DHT11_Read(&dht);
+    g_EnvLastStatus = (uint8_t)st;
+
+    if (st == HAL_OK)
+    {
+      g_EnvTemp = dht.temp_int;
+      g_EnvHumi = dht.hum_int;
+      g_EnvTempDec = (uint8_t)(dht.temp_dec % 10U);
+      g_EnvHumiDec = (uint8_t)(dht.hum_dec % 10U);
+      g_EnvValid = 1;
+    }
+    else
+    {
+      g_EnvValid = 0;
+    }
+
+    osDelay(1200);
+  }
+}
+
 void OLED_Task_Entry(void *argument)
 {
-  const char *menuItems[4] = {"Temp", "Light", "Time", "System"};
+  const char *menuItems[4] = {"Environment", "Light", "Switch", "System"};
   const char *lightItems[2] = {"LED Control", "RGB Control"};
-  UI_Page_t uiPage = UI_PAGE_MENU;
+  const char *systemItems[1] = {"Time"};
+  UI_Page_t uiPage = UI_PAGE_SCREENSAVER;
   DateTimeField_t dtField = FIELD_HOUR;
   uint8_t timeEditing = 0;
 
   uint8_t lightMenuIndex = 0;
+  uint8_t systemMenuIndex = 0;
   uint8_t ledCursor = 0;   /* 0:Mode, 1:LED1, 2:LED2, 3:LED3 */
   uint8_t ledEditing = 0;
 
@@ -237,8 +284,8 @@ void OLED_Task_Entry(void *argument)
 
   uint8_t enteredIndex = 0xFF;
   int16_t highlightY = 14;          /* ????????Y */
-  int16_t lightHighlightY = 22;     /* Light Menu 高亮条动画Y */
-  int16_t ledHighlightY = 14;       /* LED Control 标签高亮动画Y */
+  int16_t lightHighlightY = 22;     /* Light Menu ?????Y */
+  int16_t ledHighlightY = 14;       /* LED Control ??????Y */
   uint8_t clickShowCnt = 0;         /* OPEN?????? */
 
   uint8_t blinkOn = 1;
@@ -271,8 +318,54 @@ void OLED_Task_Entry(void *argument)
       blinkOn = (uint8_t)!blinkOn;
     }
 
+    /* KEY1: ???????????? */
+    if ((keyEvt == 1) && (uiPage != UI_PAGE_MENU) && (uiPage != UI_PAGE_SCREENSAVER))
+    {
+      g_MenuEnterFlag = 0;
+      uiPage = UI_PAGE_MENU;
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_SCREENSAVER)
+    {
+      RTC_TimeTypeDef nowTime;
+      RTC_DateTypeDef nowDate;
+
+      HAL_RTC_GetTime(&hrtc, &nowTime, RTC_FORMAT_BIN);
+      HAL_RTC_GetDate(&hrtc, &nowDate, RTC_FORMAT_BIN);
+
+      /* ???????????? */
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        uiPage = UI_PAGE_MENU;
+        continue;
+      }
+
+      OLED_Clear();
+      OLED_ShowString(36, 0, "Smart Home", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+
+      snprintf(buf, sizeof(buf), "20%02d-%02d-%02d", nowDate.Year, nowDate.Month, nowDate.Date);
+      OLED_ShowString(28, 24, buf, OLED_6X8);
+
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d", nowTime.Hours, nowTime.Minutes, nowTime.Seconds);
+      OLED_ShowString(28, 38, buf, OLED_8X16);
+
+      OLED_Update();
+      continue;
+    }
+
     if (uiPage == UI_PAGE_MENU)
     {
+      /* 在主菜单按 KEY1 返回屏保 */
+      if (keyEvt == 1)
+      {
+        g_MenuEnterFlag = 0;
+        uiPage = UI_PAGE_SCREENSAVER;
+        continue;
+      }
+
       if (step > 0)
       {
         g_MenuIndex++;
@@ -295,21 +388,18 @@ void OLED_Task_Entry(void *argument)
           lightMenuIndex = 0;
           uiPage = UI_PAGE_LIGHT_MENU;
         }
-        else if (g_MenuIndex == 2) /* ?? Time */
+        else if (g_MenuIndex == 0) /* Environment */
         {
-          HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
-          HAL_RTC_GetDate(&hrtc, &rtcDate, RTC_FORMAT_BIN);
-          editHour = rtcTime.Hours;
-          editMin  = rtcTime.Minutes;
-          editSec  = rtcTime.Seconds;
-          editYear = rtcDate.Year;
-          editMonth = rtcDate.Month;
-          editDay = rtcDate.Date;
-          dtField = FIELD_HOUR;
-          timeEditing = 0;
-          blinkOn = 1;
-          lastBlinkTick = HAL_GetTick();
-          uiPage = UI_PAGE_TIME;
+          uiPage = UI_PAGE_ENV;
+        }
+        else if (g_MenuIndex == 2) /* Switch */
+        {
+          uiPage = UI_PAGE_SWITCH;
+        }
+        else if (g_MenuIndex == 3) /* System */
+        {
+          systemMenuIndex = 0;
+          uiPage = UI_PAGE_SYSTEM_MENU;
         }
       }
 
@@ -341,16 +431,107 @@ void OLED_Task_Entry(void *argument)
       continue;
     }
 
+    if (uiPage == UI_PAGE_SWITCH)
+    {
+      OLED_Clear();
+      OLED_ShowString(0, 0, "Switch", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+      OLED_ShowString(8, 28, "TODO: Relay Ctrl", OLED_6X8);
+      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+      OLED_Update();
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_SYSTEM_MENU)
+    {
+      if (step > 0)
+      {
+        systemMenuIndex = 0;
+      }
+      else if (step < 0)
+      {
+        systemMenuIndex = 0;
+      }
+
+      if (g_MenuEnterFlag)
+        {
+        g_MenuEnterFlag = 0;
+
+        if (systemMenuIndex == 0) /* Time */
+        {
+          HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
+          HAL_RTC_GetDate(&hrtc, &rtcDate, RTC_FORMAT_BIN);
+          editHour = rtcTime.Hours;
+          editMin  = rtcTime.Minutes;
+          editSec  = rtcTime.Seconds;
+          editYear = rtcDate.Year;
+          editMonth = rtcDate.Month;
+          editDay = rtcDate.Date;
+          dtField = FIELD_HOUR;
+          timeEditing = 0;
+          blinkOn = 1;
+          lastBlinkTick = HAL_GetTick();
+          uiPage = UI_PAGE_TIME;
+        }
+      }
+
+      OLED_Clear();
+      OLED_ShowString(0, 0, "System Menu", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+      OLED_ShowString(0, 16, (char *)systemItems[0], OLED_6X8);
+      OLED_ReverseArea(0, 23, 128, 10);
+      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+
+      OLED_Update();
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_ENV)
+    {
+      OLED_Clear();
+      OLED_ShowString(0, 0, "Environment", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+
+      if (g_EnvValid)
+      {
+        snprintf(buf, sizeof(buf), "Temp:%2d.%1dC", g_EnvTemp, g_EnvTempDec);
+        OLED_ShowString(0, 16, buf, OLED_6X8);
+
+        snprintf(buf, sizeof(buf), "Humi:%2d.%1d%%", g_EnvHumi, g_EnvHumiDec);
+        OLED_ShowString(0, 28, buf, OLED_6X8);
+      }
+      else
+      {
+        OLED_ShowString(8, 24, "Sensor reading...", OLED_6X8);
+        OLED_ShowString(8, 36, "CHK DHT11 WIRE", OLED_6X8);
+
+        if (g_EnvLastStatus == (uint8_t)HAL_TIMEOUT)
+        {
+          OLED_ShowString(8, 48, "ERR: TIMEOUT", OLED_6X8);
+        }
+        else if (g_EnvLastStatus == (uint8_t)HAL_ERROR)
+        {
+          OLED_ShowString(8, 48, "ERR: CHECKSUM", OLED_6X8);
+        }
+        else if (g_EnvLastStatus == (uint8_t)HAL_BUSY)
+        {
+          OLED_ShowString(8, 48, "ERR: BUSY", OLED_6X8);
+        }
+        else
+        {
+          OLED_ShowString(8, 48, "ERR: UNKNOWN", OLED_6X8);
+        }
+      }
+
+      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+      OLED_Update();
+      continue;
+    }
+
     if (uiPage == UI_PAGE_LIGHT_MENU)
     {
       int16_t targetLightY;
       int16_t lightDy;
-
-      if (keyEvt == 1)
-      {
-        uiPage = UI_PAGE_MENU;
-        continue;
-      }
 
       targetLightY = (int16_t)(22 + ((int16_t)lightMenuIndex * 12));
       lightDy = targetLightY - lightHighlightY;
@@ -396,11 +577,6 @@ void OLED_Task_Entry(void *argument)
 
     if (uiPage == UI_PAGE_RGB_CTRL)
     {
-      if (keyEvt == 1)
-      {
-        uiPage = UI_PAGE_LIGHT_MENU;
-      }
-
       OLED_Clear();
       OLED_ShowString(0, 0, "RGB Control", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
@@ -417,13 +593,6 @@ void OLED_Task_Entry(void *argument)
       uint8_t disp[3];
       int16_t targetLedY;
       int16_t ledDy;
-
-      if (keyEvt == 1)
-      {
-        ledEditing = 0;
-        uiPage = UI_PAGE_LIGHT_MENU;
-        continue;
-      }
 
       targetLedY = (int16_t)(14 + ((int16_t)ledCursor * 12));
       ledDy = targetLedY - ledHighlightY;
@@ -512,7 +681,7 @@ void OLED_Task_Entry(void *argument)
         OLED_ShowNum(98, y, disp[i], 3, OLED_6X8);
       }
 
-      /* 仅反转左侧标签区，不反转进度条区；编辑LED时按0.5s闪烁 */
+      /* ???????????????????LED??0.5s?? */
       if (ledEditing && (ledCursor != 0))
       {
         if (blinkOn)
@@ -695,4 +864,5 @@ void OLED_Task_Entry(void *argument)
   }
 }
 /* USER CODE END Application */
+
 
