@@ -81,7 +81,7 @@ void MX_RTC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
-  /* 首次初始化完成后写入魔术字 */
+  /* 首次初始化完成后写入魔术�? */
   HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR1, RTC_BKP_MAGIC);
 
   /* USER CODE END RTC_Init 2 */

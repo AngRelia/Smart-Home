@@ -768,6 +768,26 @@
               <FileType>5</FileType>
               <FilePath>.\icode\key.h</FilePath>
             </File>
+            <File>
+              <FileName>my_encoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\icode\my_encoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>my_encoder.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\icode\my_encoder.h</FilePath>
+            </File>
+            <File>
+              <FileName>led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\icode\led.c</FilePath>
+            </File>
+            <File>
+              <FileName>led.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\icode\led.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

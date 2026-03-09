@@ -27,6 +27,8 @@
 "smart home\oled.o"
 "smart home\oled_data.o"
 "smart home\key.o"
+"smart home\my_encoder.o"
+"smart home\led.o"
 "smart home\croutine.o"
 "smart home\event_groups.o"
 "smart home\list.o"

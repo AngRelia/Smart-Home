@@ -95,6 +95,7 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   MX_RTC_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	// 检查备份寄存器 DR1 的值是否为 0x32F2
 	if (HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR1) != 0x32F2)
