@@ -71,6 +71,10 @@ void Error_Handler(void);
 #define DHT11_GPIO_Port GPIOB
 #define BEEP_Pin GPIO_PIN_14
 #define BEEP_GPIO_Port GPIOB
+#define SWITCH_1_Pin GPIO_PIN_4
+#define SWITCH_1_GPIO_Port GPIOB
+#define SWITCH_2_Pin GPIO_PIN_5
+#define SWITCH_2_GPIO_Port GPIOB
 #define OLED_SCL_Pin GPIO_PIN_8
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_9

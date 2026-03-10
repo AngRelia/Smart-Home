@@ -1,2 +1,16 @@
-Load "Smart Home\\Smart Home.axf" 
-Erase Done.Programming Done.Verify OK.Flash Load finished at 01:35:35
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'E:\Keil5\ARM\ARMCC\Bin'
+Build target 'Smart Home'
+compiling freertos.c...
+./icode/mq2.h(27): warning:  #1-D: last line of file ends without a newline
+  #endif
+../Core/Src/freertos.c: 1 warning, 0 errors
+linking...
+Smart Home\Smart Home.axf: Error: L6218E: Undefined symbol BEEP_Init (referred from freertos.o).
+Smart Home\Smart Home.axf: Error: L6218E: Undefined symbol BEEP_Off (referred from freertos.o).
+Smart Home\Smart Home.axf: Error: L6218E: Undefined symbol BEEP_Toggle (referred from freertos.o).
+Not enough information to list image symbols.
+Not enough information to list load addresses in the image map.
+Finished: 2 information, 0 warning and 3 error messages.
+"Smart Home\Smart Home.axf" - 3 Error(s), 1 Warning(s).
+Target not created.
+Build Time Elapsed:  00:00:02

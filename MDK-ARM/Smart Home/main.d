@@ -22,6 +22,8 @@ smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_exti.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h
+smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc.h
+smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc_ex.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 smart home\main.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
@@ -40,6 +42,7 @@ smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappe
 smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+smart home\main.o: ../Core/Inc/adc.h
 smart home\main.o: ../Core/Inc/rtc.h
 smart home\main.o: ../Core/Inc/tim.h
 smart home\main.o: ../Core/Inc/gpio.h

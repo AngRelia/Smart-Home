@@ -31,6 +31,8 @@ smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_exti.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_dma_ex.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_cortex.h
+smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc.h
+smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_adc_ex.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_flash_ex.h
 smart home\freertos.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
@@ -49,4 +51,7 @@ smart home\freertos.o: ../Core/Inc/tim.h
 smart home\freertos.o: ../Core/Inc/rtc.h
 smart home\freertos.o: ./icode/led.h
 smart home\freertos.o: ./icode/dht11.h
+smart home\freertos.o: ./icode/light_sensor.h
+smart home\freertos.o: ./icode/mq2.h
+smart home\freertos.o: ./icode/beep.h
 smart home\freertos.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdio.h

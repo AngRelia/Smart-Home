@@ -23,6 +23,9 @@
 #include "rtc.h"
 #include "led.h"
 #include "dht11.h"
+#include "light_sensor.h"
+#include "mq2.h"
+#include "beep.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -82,6 +85,10 @@ volatile uint8_t g_EnvTempDec = 0;
 volatile uint8_t g_EnvHumiDec = 0;
 volatile uint8_t g_EnvValid = 0;
 volatile uint8_t g_EnvLastStatus = 0;
+volatile uint16_t g_LightRaw = 0;
+volatile uint8_t g_LightPercent = 0;
+volatile uint8_t g_Mq2Percent = 0;
+volatile uint8_t g_SwitchState[2] = {0, 0};
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -97,6 +104,7 @@ void Key_Task_Entry(void *argument);
 void OLED_Task_Entry(void *argument);
 void LED_Control_Task_Entry(void *argument);
 void ENV_Task_Entry(void *argument);
+void LightTest_Task_Entry(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -142,7 +150,8 @@ void MX_FREERTOS_Init(void) {
   xTaskCreate(Key_Task_Entry, "KeyTask", 256, NULL, osPriorityAboveNormal, &KeyTaskHandle);
   xTaskCreate(LED_Control_Task_Entry, "LEDTask", 256, NULL, osPriorityLow, &LEDTaskHandle);
   xTaskCreate(ENV_Task_Entry, "ENVTask", 256, NULL, osPriorityLow, &ENVTaskHandle);
-  xTaskCreate(OLED_Task_Entry, "OLEDTask", 512, NULL, osPriorityLow, &OLEDTaskHandle);
+  xTaskCreate(OLED_Task_Entry, "OLEDTask", 512, NULL, osPriorityNormal, &OLEDTaskHandle);
+  //xTaskCreate(LightTest_Task_Entry, "LightTest", 512, NULL, osPriorityLow, &OLEDTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -212,6 +221,8 @@ void Key_Task_Entry(void *argument)
 
 void LED_Control_Task_Entry(void *argument)
 {
+  uint8_t autoBrightness = 0;
+
   if (LED_PWM_Init(&htim3) == HAL_OK)
   {
     LED_PWM_Start();
@@ -221,8 +232,9 @@ void LED_Control_Task_Entry(void *argument)
   {
     if (g_LedModeAuto)
     {
-      /* ???????100%??????????????? */
-      LED_SetAllPercent(100, 100, 100);
+      /* ????????? */
+      autoBrightness = g_LightPercent;
+      LED_SetAllPercent(autoBrightness, autoBrightness, autoBrightness);
     }
     else
     {
@@ -237,29 +249,59 @@ void ENV_Task_Entry(void *argument)
 {
   DHT11_Data_t dht;
   HAL_StatusTypeDef st;
+  uint32_t lightAvg = 0;
+  uint32_t lastDhtTick = 0;
+  uint32_t lastBeepTick = 0;
 
   DHT11_Init();
+  BEEP_Init();
   osDelay(1200);
 
   for (;;)
   {
-    st = DHT11_Read(&dht);
-    g_EnvLastStatus = (uint8_t)st;
+    /* ????????? + ???????????? */
+    g_LightRaw = LightSensor_ReadRaw();
+    lightAvg = (lightAvg * 3U + g_LightRaw) / 4U;
+    /* ?????????????????? */
+    g_LightPercent = (uint8_t)(100U - (lightAvg * 100U) / 4095U);
 
-    if (st == HAL_OK)
+    g_Mq2Percent = MQ2_ReadPercent();
+
+    if (g_Mq2Percent > 50U)
     {
-      g_EnvTemp = dht.temp_int;
-      g_EnvHumi = dht.hum_int;
-      g_EnvTempDec = (uint8_t)(dht.temp_dec % 10U);
-      g_EnvHumiDec = (uint8_t)(dht.hum_dec % 10U);
-      g_EnvValid = 1;
+      if ((HAL_GetTick() - lastBeepTick) >= 500U)
+      {
+        lastBeepTick = HAL_GetTick();
+        BEEP_Toggle();
+      }
     }
     else
     {
-      g_EnvValid = 0;
+      BEEP_Off();
     }
 
-    osDelay(1200);
+    if ((HAL_GetTick() - lastDhtTick) >= 1000U)
+    {
+      lastDhtTick = HAL_GetTick();
+
+      st = DHT11_Read(&dht);
+      g_EnvLastStatus = (uint8_t)st;
+
+      if (st == HAL_OK)
+      {
+        g_EnvTemp = dht.temp_int;
+        g_EnvHumi = dht.hum_int;
+        g_EnvTempDec = (uint8_t)(dht.temp_dec % 10U);
+        g_EnvHumiDec = (uint8_t)(dht.hum_dec % 10U);
+        g_EnvValid = 1;
+      }
+      else
+      {
+        g_EnvValid = 0;
+      }
+    }
+
+    osDelay(100);
   }
 }
 
@@ -276,6 +318,7 @@ void OLED_Task_Entry(void *argument)
   uint8_t systemMenuIndex = 0;
   uint8_t ledCursor = 0;   /* 0:Mode, 1:LED1, 2:LED2, 3:LED3 */
   uint8_t ledEditing = 0;
+  uint8_t switchCursor = 0; /* 0:SW1, 1:SW2 */
 
   RTC_TimeTypeDef rtcTime;
   RTC_DateTypeDef rtcDate;
@@ -284,8 +327,9 @@ void OLED_Task_Entry(void *argument)
 
   uint8_t enteredIndex = 0xFF;
   int16_t highlightY = 14;          /* ????????Y */
-  int16_t lightHighlightY = 22;     /* Light Menu ?????Y */
+  int16_t lightHighlightY = 13;     /* Light Menu ?????Y */
   int16_t ledHighlightY = 14;       /* LED Control ??????Y */
+  int16_t switchHighlightY = 16;    /* Switch ??????Y */
   uint8_t clickShowCnt = 0;         /* OPEN?????? */
 
   uint8_t blinkOn = 1;
@@ -358,7 +402,7 @@ void OLED_Task_Entry(void *argument)
 
     if (uiPage == UI_PAGE_MENU)
     {
-      /* 在主菜单按 KEY1 返回屏保 */
+      /* ?????? KEY1 ???? */
       if (keyEvt == 1)
       {
         g_MenuEnterFlag = 0;
@@ -433,11 +477,40 @@ void OLED_Task_Entry(void *argument)
 
     if (uiPage == UI_PAGE_SWITCH)
     {
+      int16_t targetSwitchY;
+      int16_t switchDy;
+
+      if (step > 0)
+      {
+        switchCursor = (uint8_t)((switchCursor + 1U) % 2U);
+      }
+      else if (step < 0)
+      {
+        switchCursor = (uint8_t)((switchCursor == 0U) ? 1U : 0U);
+      }
+
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        g_SwitchState[switchCursor] = (uint8_t)!g_SwitchState[switchCursor];
+        HAL_GPIO_WritePin(SWITCH_1_GPIO_Port, SWITCH_1_Pin,
+                          g_SwitchState[0] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(SWITCH_2_GPIO_Port, SWITCH_2_Pin,
+                          g_SwitchState[1] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+      }
+
+      targetSwitchY = (int16_t)((switchCursor == 0U) ? 15 : 27);
+      switchDy = targetSwitchY - switchHighlightY;
+      if (switchDy > 2) switchDy = 2;
+      if (switchDy < -2) switchDy = -2;
+      switchHighlightY += switchDy;
+
       OLED_Clear();
       OLED_ShowString(0, 0, "Switch", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
-      OLED_ShowString(8, 28, "TODO: Relay Ctrl", OLED_6X8);
-      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+      OLED_ShowString(0, 16, g_SwitchState[0] ? "SWITCH1: ON " : "SWITCH1: OFF", OLED_6X8);
+      OLED_ShowString(0, 28, g_SwitchState[1] ? "SWITCH2: ON " : "SWITCH2: OFF", OLED_6X8);
+      OLED_ReverseArea(0, switchHighlightY, 128, 10);
       OLED_Update();
       continue;
     }
@@ -479,7 +552,7 @@ void OLED_Task_Entry(void *argument)
       OLED_ShowString(0, 0, "System Menu", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
       OLED_ShowString(0, 16, (char *)systemItems[0], OLED_6X8);
-      OLED_ReverseArea(0, 23, 128, 10);
+      OLED_ReverseArea(0, 15, 128, 10);
       OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
 
       OLED_Update();
@@ -499,6 +572,12 @@ void OLED_Task_Entry(void *argument)
 
         snprintf(buf, sizeof(buf), "Humi:%2d.%1d%%", g_EnvHumi, g_EnvHumiDec);
         OLED_ShowString(0, 28, buf, OLED_6X8);
+
+        snprintf(buf, sizeof(buf), "Light:%3d%%", g_LightPercent);
+        OLED_ShowString(0, 40, buf, OLED_6X8);
+
+        snprintf(buf, sizeof(buf), "AIR:%3d%%", g_Mq2Percent);
+        OLED_ShowString(0, 52, buf, OLED_6X8);
       }
       else
       {
@@ -523,7 +602,6 @@ void OLED_Task_Entry(void *argument)
         }
       }
 
-      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
       OLED_Update();
       continue;
     }
@@ -533,7 +611,7 @@ void OLED_Task_Entry(void *argument)
       int16_t targetLightY;
       int16_t lightDy;
 
-      targetLightY = (int16_t)(22 + ((int16_t)lightMenuIndex * 12));
+      targetLightY = (int16_t)(13 + ((int16_t)lightMenuIndex * 12));
       lightDy = targetLightY - lightHighlightY;
       if (lightDy > 2) lightDy = 2;
       if (lightDy < -2) lightDy = -2;
@@ -568,9 +646,9 @@ void OLED_Task_Entry(void *argument)
       OLED_Clear();
       OLED_ShowString(0, 0, "Light Menu", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
-      OLED_ShowString(8, 22, (char *)lightItems[0], OLED_6X8);
-      OLED_ShowString(8, 34, (char *)lightItems[1], OLED_6X8);
-      OLED_ReverseArea(0, lightHighlightY - 1, 128, 9);
+      OLED_ShowString(0, 14, (char *)lightItems[0], OLED_6X8);
+      OLED_ShowString(0, 26, (char *)lightItems[1], OLED_6X8);
+      OLED_ReverseArea(0, lightHighlightY, 128, 9);
       OLED_Update();
       continue;
     }
@@ -591,6 +669,7 @@ void OLED_Task_Entry(void *argument)
       uint8_t d1, d2, d3;
       uint8_t i;
       uint8_t disp[3];
+      uint8_t autoBrightness = 0;
       int16_t targetLedY;
       int16_t ledDy;
 
@@ -647,7 +726,9 @@ void OLED_Task_Entry(void *argument)
       d3 = g_LedBrightness[2];
       if (g_LedModeAuto)
       {
-        d1 = d2 = d3 = 100;
+        /* Auto ?????????? PWM ?? */
+        autoBrightness = g_LightPercent;
+        d1 = d2 = d3 = autoBrightness;
       }
       disp[0] = d1; disp[1] = d2; disp[2] = d3;
 
@@ -863,6 +944,40 @@ void OLED_Task_Entry(void *argument)
     OLED_Update();
   }
 }
+
+void LightTest_Task_Entry(void *argument)
+{
+  uint16_t raw = 0;
+  uint32_t mv = 0;
+  uint8_t percent = 0;
+  char buf[16];
+
+  for (;;)
+  {
+    raw = LightSensor_ReadRaw();
+    percent = (uint8_t)((raw * 100U) / 4095U);
+    mv = (raw * 3300U) / 4095U;
+
+    OLED_Clear();
+    OLED_ShowString(0, 0, "Light ADC Test", OLED_6X8);
+    OLED_DrawLine(0, 10, 127, 10);
+
+    snprintf(buf, sizeof(buf), "RAW:%4u", raw);
+    OLED_ShowString(0, 18, buf, OLED_6X8);
+
+    snprintf(buf, sizeof(buf), "PCT:%3u%%", percent);
+    OLED_ShowString(0, 30, buf, OLED_6X8);
+
+    snprintf(buf, sizeof(buf), "MV:%4lu", (unsigned long)mv);
+    OLED_ShowString(0, 42, buf, OLED_6X8);
+
+    OLED_Update();
+    osDelay(200);
+  }
+}
 /* USER CODE END Application */
+
+
+
 
 
