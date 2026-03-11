@@ -84,7 +84,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rtc.h)(0x682099AA)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rtc_ex.h)(0x682099AA)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x682099AA)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x682099AA)
-F (../Core/Src/freertos.c)(0x69B0690B)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ./icode -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3 --no-multibyte-chars-I.\RTE\_Smart_Home-IE:\Keil5\ARM\PACK\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IE:\Keil5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F10X_MD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xB-o "smart home\freertos.o" --omf_browse "smart home\freertos.crf" --depend "smart home\freertos.d")
+F (../Core/Src/freertos.c)(0x69B1BC90)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ./icode -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3 --no-multibyte-chars-I.\RTE\_Smart_Home-IE:\Keil5\ARM\PACK\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IE:\Keil5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F10X_MD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xB-o "smart home\freertos.o" --omf_browse "smart home\freertos.crf" --depend "smart home\freertos.d")
 I (../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h)(0x682099AA)
 I (E:\Keil5\ARM\ARMCC\include\stddef.h)(0x6025237E)
 I (E:\Keil5\ARM\ARMCC\include\stdint.h)(0x6025237E)
@@ -137,7 +137,7 @@ I (../Core/Inc/rtc.h)(0x69A9BCB7)
 I (./icode/led.h)(0x69AE6683)
 I (./icode/dht11.h)(0x69AEF2DE)
 I (./icode/light_sensor.h)(0x69B05907)
-I (./icode/mq2.h)(0x69B05759)
+I (./icode/mq2.h)(0x69B06ADE)
 I (./icode/beep.h)(0x69AEFED6)
 I (E:\Keil5\ARM\ARMCC\include\stdio.h)(0x60252374)
 F (../Core/Src/adc.c)(0x69B05743)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ./icode -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3 --no-multibyte-chars-I.\RTE\_Smart_Home-IE:\Keil5\ARM\PACK\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IE:\Keil5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F10X_MD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xB-o "smart home\adc.o" --omf_browse "smart home\adc.crf" --depend "smart home\adc.d")
@@ -1133,7 +1133,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x682099AA)
 I (../Core/Inc/adc.h)(0x69B04745)
 F (.\icode\light_sensor.h)(0x69B05907)()
 F (.\icode\mq2.c)(0x69B067F9)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ./icode -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3 --no-multibyte-chars-I.\RTE\_Smart_Home-IE:\Keil5\ARM\PACK\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IE:\Keil5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F10X_MD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xB-o "smart home\mq2.o" --omf_browse "smart home\mq2.crf" --depend "smart home\mq2.d")
-I (icode\mq2.h)(0x69B05759)
+I (icode\mq2.h)(0x69B06ADE)
 I (../Core/Inc/main.h)(0x69B06252)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x682099AA)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x69B04746)
@@ -1166,7 +1166,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rtc_ex.h)(0x682099AA)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x682099AA)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x682099AA)
 I (../Core/Inc/adc.h)(0x69B04745)
-F (.\icode\mq2.h)(0x69B05759)()
+F (.\icode\mq2.h)(0x69B06ADE)()
 F (.\icode\beep.c)(0x69AEFEE4)(--c99 -c --cpu Cortex-M3 -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ./icode -I ../Middlewares/Third_Party/FreeRTOS/Source/include -I ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3 --no-multibyte-chars-I.\RTE\_Smart_Home-IE:\Keil5\ARM\PACK\ARM\CMSIS\6.1.0\CMSIS\Core\Include-IE:\Keil5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F10X_MD -D_RTE_ -DUSE_HAL_DRIVER -DSTM32F103xB-o "smart home\beep.o" --omf_browse "smart home\beep.crf" --depend "smart home\beep.d")
 I (icode\beep.h)(0x69AEFED6)
 I (../Core/Inc/main.h)(0x69B06252)

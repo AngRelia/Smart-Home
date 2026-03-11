@@ -39,9 +39,12 @@ typedef enum
   UI_PAGE_SWITCH,
   UI_PAGE_LIGHT_MENU,
   UI_PAGE_SYSTEM_MENU,
+  UI_PAGE_TIME_MENU,
   UI_PAGE_LED_CTRL,
   UI_PAGE_RGB_CTRL,
-  UI_PAGE_TIME
+  UI_PAGE_TIME,
+  UI_PAGE_ALARM_TH,
+  UI_PAGE_ALARM
 } UI_Page_t;
 
 typedef enum
@@ -53,6 +56,12 @@ typedef enum
   FIELD_MONTH,
   FIELD_DAY
 } DateTimeField_t;
+
+typedef enum
+{
+  ALARM_FIELD_HOUR = 0,
+  ALARM_FIELD_MIN
+} AlarmField_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -89,6 +98,9 @@ volatile uint16_t g_LightRaw = 0;
 volatile uint8_t g_LightPercent = 0;
 volatile uint8_t g_Mq2Percent = 0;
 volatile uint8_t g_SwitchState[2] = {0, 0};
+volatile uint8_t g_AlarmHour = 12;
+volatile uint8_t g_AlarmMin = 0;
+volatile uint8_t g_Mq2Threshold = 50;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -254,20 +266,41 @@ void ENV_Task_Entry(void *argument)
   uint32_t lastBeepTick = 0;
 
   DHT11_Init();
-  BEEP_Init();
+  BEEP_Init(); /* 蜂鸣器默认关闭，超阈值时再控制 */
   osDelay(1200);
 
   for (;;)
   {
-    /* ????????? + ???????????? */
+    RTC_TimeTypeDef nowTime;
+    RTC_DateTypeDef nowDate;
+    uint8_t alarmActive = 0;
+    uint8_t mq2Active = 0;
+
+    /* 光敏采样 + 简单滑动平均 */
     g_LightRaw = LightSensor_ReadRaw();
     lightAvg = (lightAvg * 3U + g_LightRaw) / 4U;
-    /* ?????????????????? */
+    /* 光强百分比（越亮越低） */
     g_LightPercent = (uint8_t)(100U - (lightAvg * 100U) / 4095U);
 
+    /* MQ2 百分比 */
     g_Mq2Percent = MQ2_ReadPercent();
 
-    if (g_Mq2Percent > 50U)
+    /* 闹钟触发 */
+    HAL_RTC_GetTime(&hrtc, &nowTime, RTC_FORMAT_BIN);
+    HAL_RTC_GetDate(&hrtc, &nowDate, RTC_FORMAT_BIN);
+    if ((nowTime.Hours == g_AlarmHour) && (nowTime.Minutes == g_AlarmMin))
+    {
+      alarmActive = 1U;
+    }
+
+    /* MQ2 阈值报警 */
+    if (g_Mq2Percent > g_Mq2Threshold)
+    {
+      mq2Active = 1U;
+    }
+
+    /* MQ2/闹钟任一触发：0.5s 交替蜂鸣 */
+    if (alarmActive || mq2Active)
     {
       if ((HAL_GetTick() - lastBeepTick) >= 500U)
       {
@@ -280,6 +313,7 @@ void ENV_Task_Entry(void *argument)
       BEEP_Off();
     }
 
+    /* DHT11 至少 1s 读取一次，避免 BUSY/ERROR */
     if ((HAL_GetTick() - lastDhtTick) >= 1000U)
     {
       lastDhtTick = HAL_GetTick();
@@ -309,13 +343,15 @@ void OLED_Task_Entry(void *argument)
 {
   const char *menuItems[4] = {"Environment", "Light", "Switch", "System"};
   const char *lightItems[2] = {"LED Control", "RGB Control"};
-  const char *systemItems[1] = {"Time"};
+  const char *systemItems[2] = {"Time", "Alarm"};
+  const char *timeItems[2] = {"Time Set", "Alarm Clock"};
   UI_Page_t uiPage = UI_PAGE_SCREENSAVER;
   DateTimeField_t dtField = FIELD_HOUR;
   uint8_t timeEditing = 0;
 
   uint8_t lightMenuIndex = 0;
   uint8_t systemMenuIndex = 0;
+  uint8_t timeMenuIndex = 0;
   uint8_t ledCursor = 0;   /* 0:Mode, 1:LED1, 2:LED2, 3:LED3 */
   uint8_t ledEditing = 0;
   uint8_t switchCursor = 0; /* 0:SW1, 1:SW2 */
@@ -325,11 +361,17 @@ void OLED_Task_Entry(void *argument)
   uint8_t editHour = 0, editMin = 0, editSec = 0;
   uint8_t editYear = 0, editMonth = 1, editDay = 1;
 
+  AlarmField_t alarmField = ALARM_FIELD_HOUR;
+  uint8_t alarmEditing = 0;
+  uint8_t alarmThEditing = 0;
+
   uint8_t enteredIndex = 0xFF;
   int16_t highlightY = 14;          /* ????????Y */
   int16_t lightHighlightY = 13;     /* Light Menu ?????Y */
   int16_t ledHighlightY = 14;       /* LED Control ??????Y */
   int16_t switchHighlightY = 16;    /* Switch ??????Y */
+  int16_t systemHighlightY = 15;    /* System Menu ?????Y */
+  int16_t timeHighlightY = 15;      /* Time Menu ?????Y */
   uint8_t clickShowCnt = 0;         /* OPEN?????? */
 
   uint8_t blinkOn = 1;
@@ -362,8 +404,10 @@ void OLED_Task_Entry(void *argument)
       blinkOn = (uint8_t)!blinkOn;
     }
 
-    /* KEY1: ???????????? */
-    if ((keyEvt == 1) && (uiPage != UI_PAGE_MENU) && (uiPage != UI_PAGE_SCREENSAVER))
+    /* KEY1: 返回上级（细分页面在各自分支处理） */
+    if ((keyEvt == 1) && (uiPage != UI_PAGE_MENU) && (uiPage != UI_PAGE_SCREENSAVER)
+        && (uiPage != UI_PAGE_TIME_MENU) && (uiPage != UI_PAGE_TIME)
+        && (uiPage != UI_PAGE_ALARM) && (uiPage != UI_PAGE_ALARM_TH))
     {
       g_MenuEnterFlag = 0;
       uiPage = UI_PAGE_MENU;
@@ -517,20 +561,77 @@ void OLED_Task_Entry(void *argument)
 
     if (uiPage == UI_PAGE_SYSTEM_MENU)
     {
+      int16_t targetSystemY;
+      int16_t systemDy;
+
       if (step > 0)
       {
-        systemMenuIndex = 0;
+        systemMenuIndex = (uint8_t)((systemMenuIndex + 1U) % 2U);
       }
       else if (step < 0)
       {
-        systemMenuIndex = 0;
+        systemMenuIndex = (uint8_t)((systemMenuIndex == 0U) ? 1U : 0U);
       }
 
       if (g_MenuEnterFlag)
-        {
+      {
         g_MenuEnterFlag = 0;
+        if (systemMenuIndex == 0)
+        {
+          timeMenuIndex = 0;
+          uiPage = UI_PAGE_TIME_MENU;
+        }
+        else
+        {
+          blinkOn = 1;
+          lastBlinkTick = HAL_GetTick();
+          alarmThEditing = 0;
+          uiPage = UI_PAGE_ALARM_TH;
+        }
+      }
 
-        if (systemMenuIndex == 0) /* Time */
+      targetSystemY = (int16_t)(15 + ((int16_t)systemMenuIndex * 12));
+      systemDy = targetSystemY - systemHighlightY;
+      if (systemDy > 2) systemDy = 2;
+      if (systemDy < -2) systemDy = -2;
+      systemHighlightY += systemDy;
+
+      OLED_Clear();
+      OLED_ShowString(0, 0, "System Menu", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+      OLED_ShowString(0, 16, (char *)systemItems[0], OLED_6X8);
+      OLED_ShowString(0, 28, (char *)systemItems[1], OLED_6X8);
+      OLED_ReverseArea(0, systemHighlightY, 128, 10);
+      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+
+      OLED_Update();
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_TIME_MENU)
+    {
+      if (keyEvt == 1)
+      {
+        uiPage = UI_PAGE_SYSTEM_MENU;
+        continue;
+      }
+
+      int16_t targetTimeY;
+      int16_t timeDy;
+
+      if (step > 0)
+      {
+        timeMenuIndex = (uint8_t)((timeMenuIndex + 1U) % 2U);
+      }
+      else if (step < 0)
+      {
+        timeMenuIndex = (uint8_t)((timeMenuIndex == 0U) ? 1U : 0U);
+      }
+
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        if (timeMenuIndex == 0) /* Time Set */
         {
           HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BIN);
           HAL_RTC_GetDate(&hrtc, &rtcDate, RTC_FORMAT_BIN);
@@ -546,14 +647,151 @@ void OLED_Task_Entry(void *argument)
           lastBlinkTick = HAL_GetTick();
           uiPage = UI_PAGE_TIME;
         }
+        else
+        {
+          alarmField = ALARM_FIELD_HOUR;
+          alarmEditing = 0;
+          blinkOn = 1;
+          lastBlinkTick = HAL_GetTick();
+          uiPage = UI_PAGE_ALARM;
+        }
+      }
+
+      targetTimeY = (int16_t)(15 + ((int16_t)timeMenuIndex * 12));
+      timeDy = targetTimeY - timeHighlightY;
+      if (timeDy > 2) timeDy = 2;
+      if (timeDy < -2) timeDy = -2;
+      timeHighlightY += timeDy;
+
+      OLED_Clear();
+      OLED_ShowString(0, 0, "Time Menu", OLED_6X8);
+      OLED_DrawLine(0, 10, 127, 10);
+      OLED_ShowString(0, 16, (char *)timeItems[0], OLED_6X8);
+      OLED_ShowString(0, 28, (char *)timeItems[1], OLED_6X8);
+      OLED_ReverseArea(0, timeHighlightY, 128, 10);
+      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+      OLED_Update();
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_ALARM)
+    {
+      if (keyEvt == 1)
+      {
+        uiPage = UI_PAGE_TIME_MENU;
+        alarmEditing = 0;
+        continue;
+      }
+
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        alarmEditing = (uint8_t)!alarmEditing;
+        blinkOn = 1;
+        lastBlinkTick = HAL_GetTick();
+      }
+
+      if (step != 0)
+      {
+        if (!alarmEditing)
+        {
+          alarmField = (alarmField == ALARM_FIELD_HOUR) ? ALARM_FIELD_MIN : ALARM_FIELD_HOUR;
+        }
+        else
+        {
+          if (alarmField == ALARM_FIELD_HOUR)
+          {
+            int16_t v = (int16_t)g_AlarmHour + step;
+            while (v < 0) v += 24;
+            while (v >= 24) v -= 24;
+            g_AlarmHour = (uint8_t)v;
+          }
+          else
+          {
+            int16_t v = (int16_t)g_AlarmMin + step;
+            while (v < 0) v += 60;
+            while (v >= 60) v -= 60;
+            g_AlarmMin = (uint8_t)v;
+          }
+        }
       }
 
       OLED_Clear();
-      OLED_ShowString(0, 0, "System Menu", OLED_6X8);
+      OLED_ShowString(28, 0, "ALARM", OLED_8X16);
+      OLED_DrawLine(0, 18, 127, 18);
+
+      OLED_DrawRectangle(16, 24, 32, 24, OLED_UNFILLED);
+      OLED_DrawRectangle(80, 24, 32, 24, OLED_UNFILLED);
+
+      if (!(alarmEditing && alarmField == ALARM_FIELD_HOUR && !blinkOn))
+      {
+        snprintf(buf, sizeof(buf), "%02d", g_AlarmHour);
+        OLED_ShowString(24, 32, buf, OLED_6X8);
+      }
+      if (!(alarmEditing && alarmField == ALARM_FIELD_MIN && !blinkOn))
+      {
+        snprintf(buf, sizeof(buf), "%02d", g_AlarmMin);
+        OLED_ShowString(88, 32, buf, OLED_6X8);
+      }
+
+      OLED_ShowString(52, 32, ":", OLED_8X16);
+      OLED_ShowString(20, 52, "hour", OLED_6X8);
+      OLED_ShowString(86, 52, "min", OLED_6X8);
+
+      if (alarmField == ALARM_FIELD_HOUR) OLED_ReverseArea(17, 25, 30, 22);
+      if (alarmField == ALARM_FIELD_MIN)  OLED_ReverseArea(81, 25, 30, 22);
+
+      OLED_Update();
+      continue;
+    }
+
+    if (uiPage == UI_PAGE_ALARM_TH)
+    {
+      if (keyEvt == 1)
+      {
+        alarmThEditing = 0;
+        uiPage = UI_PAGE_SYSTEM_MENU;
+        continue;
+      }
+
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        alarmThEditing = (uint8_t)!alarmThEditing;
+        blinkOn = 1;
+        lastBlinkTick = HAL_GetTick();
+      }
+
+      if (step != 0 && alarmThEditing)
+      {
+        int16_t v = (int16_t)g_Mq2Threshold + step * 2;
+        if (v < 0) v = 0;
+        if (v > 100) v = 100;
+        g_Mq2Threshold = (uint8_t)v;
+      }
+
+      OLED_Clear();
+      OLED_ShowString(0, 0, "Alarm Setting", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
-      OLED_ShowString(0, 16, (char *)systemItems[0], OLED_6X8);
-      OLED_ReverseArea(0, 15, 128, 10);
-      OLED_ShowString(0, 56, "KEY1:Menu", OLED_6X8);
+      OLED_ShowString(0, 16, "MQ2 THRESH", OLED_6X8);
+
+      OLED_DrawRectangle(10, 32, 100, 10, OLED_UNFILLED);
+      if (!alarmThEditing || blinkOn)
+      {
+        uint8_t fill = (uint8_t)((g_Mq2Threshold * 98U) / 100U);
+        if (fill > 0)
+        {
+          OLED_DrawRectangle(11, 33, fill, 8, OLED_FILLED);
+        }
+      }
+
+      snprintf(buf, sizeof(buf), "%3d%%", g_Mq2Threshold);
+      OLED_ShowString(44, 48, buf, OLED_6X8);
+      if (alarmThEditing && blinkOn)
+      {
+        OLED_ReverseArea(0, 30, 128, 14);
+      }
+      OLED_ShowString(0, 56, "KEY1:Back", OLED_6X8);
 
       OLED_Update();
       continue;
@@ -799,7 +1037,7 @@ void OLED_Task_Entry(void *argument)
       HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
       HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 
-      uiPage = UI_PAGE_MENU;
+      uiPage = UI_PAGE_TIME_MENU;
       timeEditing = 0;
       continue;
     }
@@ -976,6 +1214,15 @@ void LightTest_Task_Entry(void *argument)
   }
 }
 /* USER CODE END Application */
+
+
+
+
+
+
+
+
+
 
 
 
