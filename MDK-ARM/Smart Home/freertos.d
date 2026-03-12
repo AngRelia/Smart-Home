@@ -54,4 +54,5 @@ smart home\freertos.o: ./icode/dht11.h
 smart home\freertos.o: ./icode/light_sensor.h
 smart home\freertos.o: ./icode/mq2.h
 smart home\freertos.o: ./icode/beep.h
+smart home\freertos.o: ./icode/ws2812b.h
 smart home\freertos.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdio.h

@@ -43,6 +43,7 @@ smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
 smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
 smart home\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
 smart home\main.o: ../Core/Inc/adc.h
+smart home\main.o: ../Core/Inc/dma.h
 smart home\main.o: ../Core/Inc/rtc.h
 smart home\main.o: ../Core/Inc/tim.h
 smart home\main.o: ../Core/Inc/gpio.h

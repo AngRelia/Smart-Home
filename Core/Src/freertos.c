@@ -26,6 +26,7 @@
 #include "light_sensor.h"
 #include "mq2.h"
 #include "beep.h"
+#include "ws2812b.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -80,6 +81,7 @@ TaskHandle_t KeyTaskHandle;
 TaskHandle_t OLEDTaskHandle;
 TaskHandle_t LEDTaskHandle;
 TaskHandle_t ENVTaskHandle;
+TaskHandle_t WS2812TaskHandle;
 
 volatile int8_t  g_MenuIndex = 0;      /* 0~3 */
 volatile uint8_t g_MenuEnterFlag = 0;  /* ???????? */
@@ -101,6 +103,7 @@ volatile uint8_t g_SwitchState[2] = {0, 0};
 volatile uint8_t g_AlarmHour = 12;
 volatile uint8_t g_AlarmMin = 0;
 volatile uint8_t g_Mq2Threshold = 50;
+volatile WS2812B_Mode_t g_WsMode = WS2812B_MODE_OFF;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -117,6 +120,7 @@ void OLED_Task_Entry(void *argument);
 void LED_Control_Task_Entry(void *argument);
 void ENV_Task_Entry(void *argument);
 void LightTest_Task_Entry(void *argument);
+void WS2812_Task_Entry(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -162,6 +166,7 @@ void MX_FREERTOS_Init(void) {
   xTaskCreate(Key_Task_Entry, "KeyTask", 256, NULL, osPriorityAboveNormal, &KeyTaskHandle);
   xTaskCreate(LED_Control_Task_Entry, "LEDTask", 256, NULL, osPriorityLow, &LEDTaskHandle);
   xTaskCreate(ENV_Task_Entry, "ENVTask", 256, NULL, osPriorityLow, &ENVTaskHandle);
+  xTaskCreate(WS2812_Task_Entry, "WS2812", 256, NULL, osPriorityLow, &WS2812TaskHandle);
   xTaskCreate(OLED_Task_Entry, "OLEDTask", 512, NULL, osPriorityNormal, &OLEDTaskHandle);
   //xTaskCreate(LightTest_Task_Entry, "LightTest", 512, NULL, osPriorityLow, &OLEDTaskHandle);
   /* USER CODE END RTOS_THREADS */
@@ -266,7 +271,7 @@ void ENV_Task_Entry(void *argument)
   uint32_t lastBeepTick = 0;
 
   DHT11_Init();
-  BEEP_Init(); /* 蜂鸣器默认关闭，超阈值时再控制 */
+  BEEP_Init(); /* ???????????????? */
   osDelay(1200);
 
   for (;;)
@@ -276,16 +281,16 @@ void ENV_Task_Entry(void *argument)
     uint8_t alarmActive = 0;
     uint8_t mq2Active = 0;
 
-    /* 光敏采样 + 简单滑动平均 */
+    /* ???? + ???????? */
     g_LightRaw = LightSensor_ReadRaw();
     lightAvg = (lightAvg * 3U + g_LightRaw) / 4U;
-    /* 光强百分比（越亮越低） */
+    /* ???????????? */
     g_LightPercent = (uint8_t)(100U - (lightAvg * 100U) / 4095U);
 
-    /* MQ2 百分比 */
+    /* MQ2 ???? */
     g_Mq2Percent = MQ2_ReadPercent();
 
-    /* 闹钟触发 */
+    /* ???? */
     HAL_RTC_GetTime(&hrtc, &nowTime, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&hrtc, &nowDate, RTC_FORMAT_BIN);
     if ((nowTime.Hours == g_AlarmHour) && (nowTime.Minutes == g_AlarmMin))
@@ -293,13 +298,13 @@ void ENV_Task_Entry(void *argument)
       alarmActive = 1U;
     }
 
-    /* MQ2 阈值报警 */
+    /* MQ2 ??????? */
     if (g_Mq2Percent > g_Mq2Threshold)
     {
       mq2Active = 1U;
     }
 
-    /* MQ2/闹钟任一触发：0.5s 交替蜂鸣 */
+    /* MQ2/????????0.5s ???? */
     if (alarmActive || mq2Active)
     {
       if ((HAL_GetTick() - lastBeepTick) >= 500U)
@@ -313,7 +318,7 @@ void ENV_Task_Entry(void *argument)
       BEEP_Off();
     }
 
-    /* DHT11 至少 1s 读取一次，避免 BUSY/ERROR */
+    /* DHT11 ?? 1s ???????? BUSY/ERROR */
     if ((HAL_GetTick() - lastDhtTick) >= 1000U)
     {
       lastDhtTick = HAL_GetTick();
@@ -339,6 +344,21 @@ void ENV_Task_Entry(void *argument)
   }
 }
 
+void WS2812_Task_Entry(void *argument)
+{
+  WS2812B_Init(&htim1);
+  WS2812B_UpdateMode(WS2812B_MODE_OFF);
+
+  for (;;)
+  {
+    if (!WS2812B_IsBusy())
+    {
+      WS2812B_RenderFrame();
+    }
+    osDelay(30);
+  }
+}
+
 void OLED_Task_Entry(void *argument)
 {
   const char *menuItems[4] = {"Environment", "Light", "Switch", "System"};
@@ -355,6 +375,7 @@ void OLED_Task_Entry(void *argument)
   uint8_t ledCursor = 0;   /* 0:Mode, 1:LED1, 2:LED2, 3:LED3 */
   uint8_t ledEditing = 0;
   uint8_t switchCursor = 0; /* 0:SW1, 1:SW2 */
+  uint8_t rgbModeIndex = 0; /* 0=OFF,1=Breath,2=Flow,3=Gradient,4=Colorful */
 
   RTC_TimeTypeDef rtcTime;
   RTC_DateTypeDef rtcDate;
@@ -404,7 +425,7 @@ void OLED_Task_Entry(void *argument)
       blinkOn = (uint8_t)!blinkOn;
     }
 
-    /* KEY1: 返回上级（细分页面在各自分支处理） */
+    /* KEY1: ?????????????????? */
     if ((keyEvt == 1) && (uiPage != UI_PAGE_MENU) && (uiPage != UI_PAGE_SCREENSAVER)
         && (uiPage != UI_PAGE_TIME_MENU) && (uiPage != UI_PAGE_TIME)
         && (uiPage != UI_PAGE_ALARM) && (uiPage != UI_PAGE_ALARM_TH))
@@ -877,6 +898,7 @@ void OLED_Task_Entry(void *argument)
         }
         else
         {
+          rgbModeIndex = (uint8_t)g_WsMode;
           uiPage = UI_PAGE_RGB_CTRL;
         }
       }
@@ -893,11 +915,38 @@ void OLED_Task_Entry(void *argument)
 
     if (uiPage == UI_PAGE_RGB_CTRL)
     {
+      const char *rgbItems[5] = {"OFF", "Breath", "Flow", "Gradient", "Colorful"};
+
+      if (keyEvt == 1)
+      {
+        uiPage = UI_PAGE_LIGHT_MENU;
+        continue;
+      }
+
+      if (step > 0)
+      {
+        rgbModeIndex = (uint8_t)((rgbModeIndex + 1U) % 5U);
+      }
+      else if (step < 0)
+      {
+        rgbModeIndex = (uint8_t)((rgbModeIndex == 0U) ? 4U : (rgbModeIndex - 1U));
+      }
+
+      if (g_MenuEnterFlag)
+      {
+        g_MenuEnterFlag = 0;
+        g_WsMode = (WS2812B_Mode_t)rgbModeIndex;
+        WS2812B_UpdateMode(g_WsMode);
+      }
+
       OLED_Clear();
       OLED_ShowString(0, 0, "RGB Control", OLED_6X8);
       OLED_DrawLine(0, 10, 127, 10);
-      OLED_ShowString(8, 28, "TODO", OLED_6X8);
+      OLED_ShowString(0, 14, "Mode:", OLED_6X8);
+      OLED_ShowString(42, 14, (char *)rgbItems[rgbModeIndex], OLED_6X8);
       OLED_ShowString(0, 56, "KEY1 Back", OLED_6X8);
+
+      OLED_ReverseArea(0, 13, 128, 9);
       OLED_Update();
       continue;
     }
@@ -1214,17 +1263,4 @@ void LightTest_Task_Entry(void *argument)
   }
 }
 /* USER CODE END Application */
-
-
-
-
-
-
-
-
-
-
-
-
-
 
