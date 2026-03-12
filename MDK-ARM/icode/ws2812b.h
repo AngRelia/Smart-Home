@@ -14,15 +14,15 @@ extern "C" {
 /* TIM1 72MHz：800kHz -> Period=89 (ARR=89, 90个tick=1.25us) */
 #define WS2812B_TIMER_PERIOD  89U
 
-/* 1.25us 周期内高电平时长
- * 0码：约0.35us -> 30/90
- * 1码：约0.70us -> 60/90
+/* 1.25us 周期内高电平时长 (1 tick ≈ 0.0138us)
+ * 0码：手册要求 0.3us -> 0.3 / 0.0138 ≈ 22 ticks
+ * 1码：手册要求 0.9us -> 0.9 / 0.0138 ≈ 65 ticks
  */
-#define WS2812B_T0H_TICKS      30U
-#define WS2812B_T1H_TICKS      60U
+#define WS2812B_T0H_TICKS      22U
+#define WS2812B_T1H_TICKS      65U
 
-/* 复位时间 >50us，50*1.25us=62.5us */
-#define WS2812B_RESET_SLOTS    50U
+/* 复位时间：手册要求 >80us -> 这里给 80 个 slots * 1.25us = 100us，留足裕量 */
+#define WS2812B_RESET_SLOTS    80U
 
 typedef enum
 {

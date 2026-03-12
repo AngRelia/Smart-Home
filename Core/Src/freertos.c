@@ -376,6 +376,7 @@ void OLED_Task_Entry(void *argument)
   uint8_t ledEditing = 0;
   uint8_t switchCursor = 0; /* 0:SW1, 1:SW2 */
   uint8_t rgbModeIndex = 0; /* 0=OFF,1=Breath,2=Flow,3=Gradient,4=Colorful */
+  uint8_t rgbEditing = 0;
 
   RTC_TimeTypeDef rtcTime;
   RTC_DateTypeDef rtcDate;
@@ -899,6 +900,9 @@ void OLED_Task_Entry(void *argument)
         else
         {
           rgbModeIndex = (uint8_t)g_WsMode;
+          rgbEditing = 0;
+          blinkOn = 1;
+          lastBlinkTick = HAL_GetTick();
           uiPage = UI_PAGE_RGB_CTRL;
         }
       }
@@ -919,22 +923,30 @@ void OLED_Task_Entry(void *argument)
 
       if (keyEvt == 1)
       {
+        rgbEditing = 0;
         uiPage = UI_PAGE_LIGHT_MENU;
         continue;
-      }
-
-      if (step > 0)
-      {
-        rgbModeIndex = (uint8_t)((rgbModeIndex + 1U) % 5U);
-      }
-      else if (step < 0)
-      {
-        rgbModeIndex = (uint8_t)((rgbModeIndex == 0U) ? 4U : (rgbModeIndex - 1U));
       }
 
       if (g_MenuEnterFlag)
       {
         g_MenuEnterFlag = 0;
+        rgbEditing = (uint8_t)!rgbEditing;
+        blinkOn = 1;
+        lastBlinkTick = HAL_GetTick();
+      }
+
+      if (step != 0 && rgbEditing)
+      {
+        if (step > 0)
+        {
+          rgbModeIndex = (uint8_t)((rgbModeIndex + 1U) % 5U);
+        }
+        else
+        {
+          rgbModeIndex = (uint8_t)((rgbModeIndex == 0U) ? 4U : (rgbModeIndex - 1U));
+        }
+
         g_WsMode = (WS2812B_Mode_t)rgbModeIndex;
         WS2812B_UpdateMode(g_WsMode);
       }
@@ -946,7 +958,10 @@ void OLED_Task_Entry(void *argument)
       OLED_ShowString(42, 14, (char *)rgbItems[rgbModeIndex], OLED_6X8);
       OLED_ShowString(0, 56, "KEY1 Back", OLED_6X8);
 
-      OLED_ReverseArea(0, 13, 128, 9);
+      if (!rgbEditing || blinkOn)
+      {
+        OLED_ReverseArea(0, 13, 128, 9);
+      }
       OLED_Update();
       continue;
     }
@@ -1263,4 +1278,5 @@ void LightTest_Task_Entry(void *argument)
   }
 }
 /* USER CODE END Application */
+
 

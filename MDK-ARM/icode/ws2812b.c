@@ -69,6 +69,9 @@ void WS2812B_Show(void)
 {
   if (s_ws_tim == NULL || s_busy) return;
 
+  /* 【修复点】：在开始下一次 DMA 传输前，先停止上一次的传输，清理 HAL 状态机 */
+  HAL_TIM_PWM_Stop_DMA(s_ws_tim, TIM_CHANNEL_3);
+
   WS2812B_Encode();
   s_busy = 1U;
 
@@ -153,19 +156,11 @@ static void WS2812B_RenderFlow(void)
 
 static void WS2812B_RenderGradient(void)
 {
-  /* 渐变：红->绿 线性 */
-  if (WS2812B_LED_COUNT <= 1U)
-  {
-    WS2812B_SetAll(255, 0, 0);
-    return;
-  }
-
-  for (uint16_t i = 0; i < WS2812B_LED_COUNT; i++)
-  {
-    uint8_t r = (uint8_t)(255U - (i * 255U) / (WS2812B_LED_COUNT - 1U));
-    uint8_t g = (uint8_t)((i * 255U) / (WS2812B_LED_COUNT - 1U));
-    WS2812B_SetPixel(i, r, g, 0);
-  }
+  /* 全灯珠动态渐变：红->绿->蓝 循环 */
+  uint8_t r, g, b;
+  WS2812B_HueToRGB(s_hue, &r, &g, &b);
+  WS2812B_SetAll(r, g, b);
+  s_hue += 2U;
 }
 
 static void WS2812B_RenderColorful(void)
@@ -197,12 +192,11 @@ void WS2812B_RenderFrame(void)
   WS2812B_Show();
 }
 
-/* DMA 完成回调（停止 DMA + 置忙标志） */
+/* 【修复点】：DMA 完成回调只负责解除阻塞状态，不再调用 Stop_DMA 打断状态机 */
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim == s_ws_tim)
   {
-    HAL_TIM_PWM_Stop_DMA(s_ws_tim, TIM_CHANNEL_3);
     s_busy = 0U;
   }
 }
