@@ -1,0 +1,14 @@
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c
+smart home\stream_buffer.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+smart home\stream_buffer.o: E:\Keil5\ARM\ARMCC\Bin\..\include\string.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+smart home\stream_buffer.o: E:\Keil5\ARM\ARMCC\Bin\..\include\stddef.h
+smart home\stream_buffer.o: ../Core/Inc/FreeRTOSConfig.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3/portmacro.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
+smart home\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/stream_buffer.h
